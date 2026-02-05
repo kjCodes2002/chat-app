@@ -1,37 +1,75 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+// Main App component - manages state and renders the split-screen layout
+
+import { useState } from 'react';
+import type { Conversation, Message } from './types';
+import { users, initialConversations, CURRENT_USER_ID } from './data/mockData';
+import { Sidebar } from './components/Sidebar';
+import { ChatWindow } from './components/ChatWindow';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // State for selected user and conversations
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(users[0]?.id || null);
+  const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
+
+  // Get the selected user object
+  const selectedUser = users.find((u) => u.id === selectedUserId);
+
+  // Get messages for the selected conversation
+  const selectedConversation = conversations.find((c) => c.userId === selectedUserId);
+  const messages = selectedConversation?.messages || [];
+
+  // Handle sending a new message
+  const handleSendMessage = (text: string) => {
+    if (!selectedUserId) return;
+
+    const newMessage: Message = {
+      id: `msg-${Date.now()}`,
+      senderId: CURRENT_USER_ID,
+      text,
+      timestamp: new Date(),
+    };
+
+    setConversations((prev) => {
+      const existingConversation = prev.find((c) => c.userId === selectedUserId);
+
+      if (existingConversation) {
+        // Add message to existing conversation
+        return prev.map((c) =>
+          c.userId === selectedUserId
+            ? { ...c, messages: [...c.messages, newMessage] }
+            : c
+        );
+      } else {
+        // Create new conversation
+        return [...prev, { userId: selectedUserId, messages: [newMessage] }];
+      }
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
-      <div className="flex gap-8 mb-8">
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="w-24 h-24" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="w-24 h-24 animate-spin-slow" alt="React logo" />
-        </a>
-      </div>
-      <h1 className="text-5xl font-bold text-blue-400 mb-8">Vite + React + Tailwind 4</h1>
-      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl">
-        <button 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="mt-8 text-gray-400">
-        Click on the Vite and React logos to learn more
-      </p>
+    <div className="flex h-screen bg-gray-900">
+      {/* Sidebar */}
+      <Sidebar
+        users={users}
+        conversations={conversations}
+        selectedUserId={selectedUserId}
+        onSelectUser={setSelectedUserId}
+      />
+
+      {/* Chat Window */}
+      {selectedUser ? (
+        <ChatWindow
+          user={selectedUser}
+          messages={messages}
+          onSendMessage={handleSendMessage}
+        />
+      ) : (
+        <div className="flex-1 flex items-center justify-center bg-gray-900 text-gray-500">
+          <p>Select a conversation to start chatting</p>
+        </div>
+      )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
